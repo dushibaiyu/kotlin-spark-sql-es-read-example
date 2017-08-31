@@ -1,0 +1,89 @@
+group 'com.yu.sparkes'
+version '1.0-SNAPSHOT'
+
+buildscript {
+    ext.kotlin_version = '1.1.4'
+
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'kotlin'
+//apply plugin: 'zip64'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    // cascading
+    maven { url "http://conjars.org/repo" }
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
+    compile 'org.apache.spark:spark-core_2.11:2.2.0'
+    compile 'org.apache.spark:spark-sql_2.11:2.2.0'
+    // https://mvnrepository.com/artifact/org.elasticsearch/elasticsearch-hadoop
+    //compile group: 'org.elasticsearch', name: 'elasticsearch-hadoop', version: '5.5.2'
+    // https://mvnrepository.com/artifact/org.elasticsearch/elasticsearch-spark-20_2.11
+    compile group: 'org.elasticsearch', name: 'elasticsearch-spark-20_2.11', version: '5.5.2'
+
+
+
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+jar { // 打包jar的配置
+    zip64 = true
+    /*  只打包当前代码的配置，并且写好class-path配置
+      String someString = ''
+      configurations.runtime.each {someString = someString + " lib//"+it.name}
+      manifest {
+          attributes 'Main-Class': 'com.yu.spark.MainKt'
+          attributes 'Class-Path': someString
+      }
+*/
+
+    // 打包成一个fat jar的配置，即吧所有以来也打包进去
+    from(configurations.compile.collect { it.isFile() && (it.name.endsWith("jar") || it.name.endsWith("JAR") ) ? zipTree(it) : it }) {
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+    }
+
+    manifest {
+        attributes 'Implementation-Title': 'Foobar',
+                'Implementation-Version': version,
+                'Built-By': System.getProperty('user.name'),
+                'Built-Date': new Date(),
+                'Built-JDK': System.getProperty('java.version'),
+                'Main-Class': 'com.yu.spark.MainKt'
+    }
+}
+
+//清除上次的编译过的文件
+task clearPj(type:Delete){
+    delete 'build','target'
+}
+// 配合上面单个打包， 把依赖都复制到制定目录
+task copyJar(type:Copy){
+    //from configurations.runtime
+    //into ('build/libs/lib')
+}
+//把JAR复制到目标目录
+task release(type: Copy,dependsOn: [build,copyJar]) {
+// from 'conf'
+// into ('build/libs/eachend/conf') // 目标位置
+}
